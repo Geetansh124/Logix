@@ -4,77 +4,42 @@ import { connectSocket, disconnectSocket } from '../services/socket';
 
 const AuthContext = createContext(null);
 
+const DEFAULT_USER = {
+  id: '44444444-4444-4444-4444-444444444444',
+  name: 'Admin User',
+  email: 'admin@ncpor.gov.in',
+  role: 'expedition_planner',
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch {
+        // ignore
+      }
+    }
+    return DEFAULT_USER;
+  });
+  const [loading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-        connectSocket(token);
-      } catch {
-        localStorage.clear();
-      }
-    }
-    setLoading(false);
-  }, []);
+    const token = localStorage.getItem('accessToken') || 'demo_prototype_token';
+    localStorage.setItem('accessToken', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    connectSocket(token);
+  }, [user]);
 
-  const login = useCallback(async (email, password) => {
-    try {
-      const { data } = await api.post('/auth/login', { email, password });
-      const { user: userData, accessToken, refreshToken } = data.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      connectSocket(accessToken);
-      return userData;
-    } catch (err) {
-      // Prototype fallback when standalone frontend is deployed
-      const demoAccounts = {
-        'admin@ncpor.gov.in': { name: 'Admin User', role: 'expedition_planner' },
-        'director@ncpor.gov.in': { name: 'Dr. Rajesh Kumar', role: 'ncpor_director' },
-        'priya.sharma@ncpor.gov.in': { name: 'Priya Sharma', role: 'station_manager' },
-      };
-      if (demoAccounts[email] && password === 'admin123') {
-        const userData = {
-          id: '44444444-4444-4444-4444-444444444444',
-          name: demoAccounts[email].name,
-          email,
-          role: demoAccounts[email].role,
-        };
-        const token = 'demo_prototype_token';
-        localStorage.setItem('accessToken', token);
-        localStorage.setItem('refreshToken', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        return userData;
-      }
-      throw err;
-    }
-  }, []);
-
-  const register = useCallback(async (formData) => {
-    const { data } = await api.post('/auth/register', formData);
-    const { user: userData, accessToken, refreshToken } = data.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    connectSocket(accessToken);
-    return userData;
-  }, []);
+  const login = useCallback(async () => user, [user]);
+  const register = useCallback(async () => user, [user]);
 
   const logout = useCallback(() => {
-    localStorage.clear();
-    disconnectSocket();
-    setUser(null);
+    setUser(DEFAULT_USER);
   }, []);
 
-  const value = { user, loading, login, register, logout, isAuthenticated: !!user };
+  const value = { user, loading, login, register, logout, isAuthenticated: true };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
