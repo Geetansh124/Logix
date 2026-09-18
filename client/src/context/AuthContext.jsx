@@ -23,14 +23,38 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    const { user: userData, accessToken, refreshToken } = data.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    connectSocket(accessToken);
-    return userData;
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      const { user: userData, accessToken, refreshToken } = data.data;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      connectSocket(accessToken);
+      return userData;
+    } catch (err) {
+      // Prototype fallback when standalone frontend is deployed
+      const demoAccounts = {
+        'admin@ncpor.gov.in': { name: 'Admin User', role: 'expedition_planner' },
+        'director@ncpor.gov.in': { name: 'Dr. Rajesh Kumar', role: 'ncpor_director' },
+        'priya.sharma@ncpor.gov.in': { name: 'Priya Sharma', role: 'station_manager' },
+      };
+      if (demoAccounts[email] && password === 'admin123') {
+        const userData = {
+          id: '44444444-4444-4444-4444-444444444444',
+          name: demoAccounts[email].name,
+          email,
+          role: demoAccounts[email].role,
+        };
+        const token = 'demo_prototype_token';
+        localStorage.setItem('accessToken', token);
+        localStorage.setItem('refreshToken', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        return userData;
+      }
+      throw err;
+    }
   }, []);
 
   const register = useCallback(async (formData) => {
