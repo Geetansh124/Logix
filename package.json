@@ -1,0 +1,34 @@
+{
+  "name": "polar-expedition-platform",
+  "version": "1.0.0",
+  "description": "Integrated Polar Expedition Logistics and Asset Management System (SIH26062)",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "preview": "npm run preview --workspace=client",
+    "deploy:compose": "docker compose up -d --build",
+    "deploy:compose:down": "docker compose down",
+    "db:migrate": "npm run db:migrate --workspace=server",
+    "db:seed": "npm run db:seed --workspace=server",
+    "db:reset": "npm run db:reset --workspace=server",
+    "test:unit": "npm run test:unit --workspace=server",
+    "test:integration": "npm run test:integration --workspace=server",
+    "test:e2e": "echo \"E2E tests not yet configured\"",
+    "test:coverage": "npm run test:coverage --workspace=server",
+    "lint": "concurrently \"npm run lint --workspace=server\" \"npm run lint --workspace=client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
