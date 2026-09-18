@@ -32,9 +32,9 @@ services:
       - key: JWT_REFRESH_EXPIRY
         value: 7d
       - key: CLIENT_URL
-        value: https://logix.vercel.app
+        value: https://logix-orcin.vercel.app
       - key: SOCKET_CORS_ORIGIN
-        value: https://logix.vercel.app
+        value: https://logix-orcin.vercel.app
       - key: DB_SSL
         value: "true"
 
