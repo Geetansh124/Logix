@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logix — Polar Expedition Operations & Decision Intelligence</title>
+  
+  <meta name="description" content="Offline-first Polar Expedition Operations & Decision Intelligence System for NCPOR / MoES" />
+  <meta name="theme-color" content="#0284c7" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- External Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Control Room Stylesheet -->
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 1. LOGIN VIEW                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="view-login" class="flex-1 flex flex-col justify-center items-center p-6 relative" style="background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); color: #f8fafc; height: 100vh;">
+    <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#38bdf8 1px, transparent 1px); background-size: 24px 24px;"></div>
+    
+    <div class="w-full max-w-md p-8 rounded-xl relative z-10" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold font-mono text-white text-lg" style="background: #0284c7; border: 1px solid #38bdf8;">LX</div>
+        <div>
+          <h1 class="text-lg font-extrabold tracking-wider font-mono text-sky-400">Logix</h1>
+          <p class="text-xs text-slate-400">Polar Expedition Operations System (NCPOR/MoES)</p>
+        </div>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="flex flex-col gap-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Operator Callsign / Name</label>
+          <input type="text" id="login-username" value="Cmdr. R. Singh" required class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-sky-500 font-mono" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Assigned Operational Role (§23)</label>
+          <select id="login-role" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-sky-500 font-mono">
+            <option value="NCPOR Coordinator">NCPOR Coordinator (Level 5 — All Modules)</option>
+            <option value="Station Officer">Station Officer (Level 3 — Station & Field)</option>
+            <option value="Logistics Officer">Logistics Officer (Level 2 — Cargo & Inventory)</option>
+            <option value="Medical Officer">Medical Officer (Level 2 — Health & Cold Chain)</option>
+            <option value="MoES Oversight">MoES Oversight (Level 1 — Read-Only / Intel)</option>
+            <option value="Field Personnel">Field Personnel (Level 1 — Field Mode / SOS)</option>
+            <option value="System Administrator">System Administrator (Level 5 — Complete Control)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="mt-2 w-full py-2.5 rounded font-bold text-sm tracking-wide text-white transition font-mono flex items-center justify-center gap-2" style="background: #0284c7;">
+          <span>INITIALIZE COMMAND SESSION</span>
+          <span class="text-sky-200">→</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center">
+        <span>Offline Cache: <strong class="text-emerald-400">READY</strong></span>
+        <span>Version 2.4.0 (SIH26062)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 2. MAIN APPLICATION SHELL                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="view-app" class="hidden flex flex-col h-screen w-screen overflow-hidden">
+    
+    <!-- Top Alert Banner -->
+    <div id="alert-banner" class="hidden alert-banner flex items-center justify-between px-4 py-2 text-xs font-semibold" style="background: var(--danger-bg); border-bottom: 1px solid var(--danger-border); color: var(--danger);">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+        <span id="alert-banner-text">ALERT: Critical shortage projected</span>
+      </div>
+      <button onclick="dismissAlertBanner()" class="px-2 py-0.5 rounded text-xs hover:opacity-80" style="background: var(--danger); color: #fff;">Dismiss</button>
+    </div>
+
+    <!-- App Shell: Sidebar + Content -->
+    <div class="app-shell flex-1">
+      
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="logo">Logix</div>
+          <span class="version">POLAR v2.4</span>
+        </div>
+        <nav id="sidebar-nav" class="sidebar-nav"></nav>
+        <div class="p-3 border-t border-slate-800 flex flex-col gap-2">
+          <button onclick="toggleFieldMode()" class="w-full py-1.5 px-2 rounded text-xs font-mono font-bold bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 flex items-center justify-center gap-2">
+            <i data-lucide="smartphone" style="width:14px;height:14px"></i>
+            <span>FIELD MODE</span>
+          </button>
+          <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+            <button onclick="toggleTheme()" class="hover:text-white flex items-center gap-1">
+              <i data-lucide="moon" style="width:12px;height:12px"></i> Theme
+            </button>
+            <button onclick="handleLogout()" class="hover:text-red-400 flex items-center gap-1">
+              <i data-lucide="log-out" style="width:12px;height:12px"></i> Exit
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Column -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Topbar -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="breadcrumb">
+              <span class="text-muted">Logix</span>
+              <span class="sep">/</span>
+              <span id="breadcrumb-view">Command Center</span>
+            </div>
+          </div>
+          <div class="topbar-right">
+            <div id="sync-indicator" class="sync-indicator sync-online" onclick="toggleOnlineState()" title="Click to toggle Online/Offline simulation">
+              <span class="sync-dot online"></span>
+              <span>ONLINE — Synced</span>
+            </div>
+            <span id="role-badge" class="role-badge">COORDINATOR</span>
+            <button onclick="toggleCopilot()" class="btn btn-sm btn-ghost" title="Open AI Copilot">
+              <i data-lucide="sparkles" style="width:14px;height:14px;color:var(--accent)"></i> Copilot
+            </button>
+            <button onclick="openSOSModal()" class="btn btn-sm btn-danger flex items-center gap-1">
+              <i data-lucide="siren" style="width:14px;height:14px"></i> SOS
+            </button>
+          </div>
+        </header>
+
+        <!-- Main View Panels -->
+        <main class="main-content">
+          <section id="view-command-center" class="view-panel active"></section>
+          <section id="view-polar-map" class="view-panel"></section>
+          <section id="view-cargo" class="view-panel"></section>
+          <section id="view-inventory" class="view-panel"></section>
+          <section id="view-personnel" class="view-panel"></section>
+          <section id="view-assets" class="view-panel"></section>
+          <section id="view-emergency" class="view-panel"></section>
+          <section id="view-intelligence" class="view-panel"></section>
+          <section id="view-reports" class="view-panel"></section>
+          <section id="view-admin" class="view-panel"></section>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 3. OVERLAYS & MODALS                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <!-- SOS Distress Modal (§17) -->
+  <div id="modal-sos" class="hidden modal-overlay" onclick="closeSOSModal()">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 440px; border-top: 4px solid var(--danger);">
+      <div class="flex-between mb-sm">
+        <span class="font-bold text-sm text-danger flex items-center gap-2">
+          <i data-lucide="siren" style="width:18px;height:18px"></i> SATELLITE EMERGENCY DISTRESS (SOS)
+        </span>
+        <button onclick="closeSOSModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-muted)">&times;</button>
+      </div>
+      <p class="text-xs text-muted mb-md">Transmits prioritized emergency signal over COSPAS-SARSAT and Iridium burst mesh.</p>
+      
+      <div class="mb-md">
+        <label class="form-label">Select Emergency Protocol</label>
+        <select id="sos-protocol" class="form-input">
+          <option value="FIELD_MEDICAL">Protocol A: Field Medical Emergency (Evacuation Required)</option>
+          <option value="STATION_POWER">Protocol B: Station Power Loss / Generator Failure</option>
+          <option value="COMMS_FAILURE">Protocol C: Total Communications Outage</option>
+          <option value="WEATHER_SHELTER">Protocol D: Severe Blizzard / Shelter-in-Place</option>
+          <option value="EQUIPMENT_FAILURE">Protocol E: Critical Vehicle Breakdown in Field</option>
+          <option value="PERSONNEL_SEARCH">Protocol F: Search and Rescue (SAR)</option>
+        </select>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button class="btn btn-ghost btn-sm" onclick="closeSOSModal()">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="dispatchSOS()">TRANSMIT SATELLITE SOS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Operations Copilot Drawer (§25) -->
+  <div id="copilot-window" class="hidden" style="position: fixed; bottom: 16px; right: 16px; width: 380px; height: 500px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.25); z-index: 1000; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="flex-between p-3" style="background: var(--bg-secondary); border-bottom: 1px solid var(--border);">
+      <div class="flex items-center gap-2">
+        <i data-lucide="brain" style="width:16px;height:16px;color:var(--accent)"></i>
+        <span class="font-bold text-xs">Logix Operations Copilot</span>
+        <span class="status status-operational text-xs">ONLINE</span>
+      </div>
+      <button onclick="toggleCopilot()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-weight:bold">&times;</button>
+    </div>
+    <div id="copilot-messages" class="flex-1 p-3 overflow-y-auto flex flex-col gap-2">
+      <div style="padding:8px 12px;border-radius:8px;background:var(--accent-light);color:var(--text-primary);font-size:11px;line-height:1.4;">
+        👋 Logix Decision Intelligence Copilot active. Ask about diesel days-of-supply, manifest exceptions, personnel readiness, or resupply recommendations.
+      </div>
+    </div>
+    <div class="p-2 border-t border-slate-200 dark:border-slate-800 flex gap-2" style="background: var(--bg-card);">
+      <input type="text" id="copilot-input" placeholder="Ask operational question..." class="form-input text-xs flex-1" onkeypress="if(event.key==='Enter')sendCopilotMessage()" />
+      <button onclick="sendCopilotMessage()" class="btn btn-primary btn-sm">Send</button>
+    </div>
+  </div>
+
+  <!-- Field Mode Container (§39) -->
+  <div id="field-mode-panel" class="hidden"></div>
+
+  <!-- Interactive Demo / Scenario Floating Bar (§40) -->
+  <div id="demo-panel" class="hidden" style="position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.92); border: 1px solid rgba(56,189,248,0.3); border-radius: 30px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; z-index: 900; box-shadow: 0 8px 24px rgba(0,0,0,0.4); backdrop-filter: blur(8px);">
+    <span class="text-sky-400 font-mono text-xs font-bold mr-1">DEMO SIMS:</span>
+    <button onclick="simulateOffline()" class="px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700" title="Toggle Connection Drop">📶 Offline</button>
+    <button onclick="simulateCargoArrival()" class="px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700" title="Trigger Polar Vessel Arrival">🚢 Cargo Arrive</button>
+    <button onclick="simulateStockConsumption()" class="px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700" title="Consume 7 days diesel">⛽ Fuel Burn</button>
+    <button onclick="simulateSOS()" class="px-2.5 py-1 rounded-full text-xs font-mono bg-red-950 hover:bg-red-900 text-red-200 border border-red-700" title="Simulate field emergency">🚨 SOS</button>
+    <button onclick="simulateSensorAnomaly()" class="px-2.5 py-1 rounded-full text-xs font-mono bg-amber-950 hover:bg-amber-900 text-amber-200 border border-amber-700" title="Trigger generator temperature spike">⚡ Anomaly</button>
+  </div>
+
+  <!-- Toast Notification Root -->
+  <div id="toast-container" style="position: fixed; top: 60px; right: 20px; z-index: 2000; display: flex; flex-direction: column; width: 320px;"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 4. MODULAR LOGIX JAVASCRIPT BUNDLE                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <script src="src/data.js"></script>
+  <script src="src/core.js"></script>
+  <script src="src/components/copilot.js"></script>
+  <script src="src/components/demo-mode.js"></script>
+  <script src="src/views/command-center.js"></script>
+  <script src="src/views/polar-map.js"></script>
+  <script src="src/views/cargo.js"></script>
+  <script src="src/views/inventory.js"></script>
+  <script src="src/views/personnel.js"></script>
+  <script src="src/views/assets.js"></script>
+  <script src="src/views/emergency.js"></script>
+  <script src="src/views/intelligence.js"></script>
+  <script src="src/views/reports.js"></script>
+  <script src="src/views/admin.js"></script>
+
+  <script>
+    // Initial icon pass
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
